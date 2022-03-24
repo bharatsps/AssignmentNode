@@ -8,7 +8,8 @@ const Customer = require("../customers.json");
  */
 exports.getCustomersList = async (req, res, filter) => {
   try {
-    return (getCustomersList = await Customer.filter(
+    return ( 
+        getCustomersList = await Customer.filter(
       (customer) =>
         customer.first_name == filter || customer.last_name == filter
     ));
@@ -25,27 +26,67 @@ exports.getCustomersList = async (req, res, filter) => {
  */
 exports.getCustomers = async (req, res, param) => {
   try {
-    const getCustomers = Customer.filter((customer) => {
-      return (
-        (param.gender ? customer.gender === param.gender : "") ||
-        (param.car_make ? customer.car_make === param.car_make : "")
-      );
-    });
-
-    let splitData = param.sort.split(":");
-    let filter = "";
-    if (splitData[1] == "DESC") {
-      filter = `-${splitData[0]}`;
+    let getCustomersData, sortedData, getCustomers;
+    if (param.gender && param.car_make) {
+      getCustomers = Customer.filter((customer) => {
+        return (
+          customer.gender === param.gender &&
+          customer.car_make === param.car_make
+        );
+      });
+    } else if (param.gender && !param.car_make) {
+      getCustomers = Customer.filter((customer) => {
+        return customer.gender === param.gender;
+      });
     } else {
-      filter = `${splitData[0]}`;
+      getCustomers = Customer.filter((customer) => {
+        return customer.car_make === param.car_make;
+      });
     }
 
-    const sortedData = getCustomers.sort(dynamicSortMultiple(filter));
-    const start = (param.page - 1) * param.limit;
-    const end = param.page * param.limit;
-    const getCustomersData = sortedData.slice(start, end);
+    if (param.sort) {
+      let splitData = param.sort.split(":");
+      let filter = "";
+      if (splitData[1] == "DESC") {
+        filter = `-${splitData[0]}`;
+      } else {
+        filter = `${splitData[0]}`;
+      }
 
-    return getCustomersData;
+      if (getCustomers.length > 0) {
+        sortedData = getCustomers.sort(dynamicSortMultiple(filter));
+      } else {
+        sortedData = [];
+      }
+    }
+
+    if (param.page || param.limit) {
+      const start = (param.page - 1) * param.limit;
+      const end = param.page * param.limit;
+
+      if (sortedData) {
+        getCustomersData = sortedData.slice(start, end);
+        return getCustomersData;
+      } else {
+        if (getCustomers.length > 0) {
+          getCustomersData = getCustomers.slice(start, end);
+          return getCustomersData;
+        } else {
+          getCustomersData = [];
+          return getCustomersData;
+        }
+      }
+    } else {
+      if (sortedData) {
+        return sortedData;
+      } else {
+        if (getCustomers.length > 0) {
+          return getCustomers;
+        } else {
+          return Customer;
+        }
+      }
+    }
   } catch (error) {
     res.status(201).json({ status: 500, message: error });
   }
